@@ -58,6 +58,7 @@
 #include "public/samples/CPPSamples/common/ParametersStorage.h"
 #include "public/samples/CPPSamples/common/DisplayDvrPipeline.h"
 #include "public/samples/CPPSamples/common/CmdLineParser.h"
+#include "public/samples/CPPSamples/common/CAmfInit.h"
 
 
 
@@ -138,34 +139,6 @@ public:
     ~CComInit() {  CoUninitialize();  };
 };
 //-------------------------------------------------------------------------------------------------
-class CAmfInit
-{
-public:
-    CAmfInit()  {};
-    ~CAmfInit() {  g_AMFFactory.Terminate();  };
-
-    AMF_RESULT Init()
-    {
-        AMF_RESULT res = g_AMFFactory.Init();
-        if (res != AMF_OK)
-            return res;
-
-#ifdef _DEBUG
-        g_AMFFactory.GetDebug()->AssertsEnable(true);
-#else
-        g_AMFFactory.GetDebug()->AssertsEnable(false);
-//        g_AMFFactory.GetTrace()->SetGlobalLevel(AMF_TRACE_WARNING);
-#endif
-
-        g_AMFFactory.GetTrace()->SetGlobalLevel(AMF_TRACE_INFO);
-        g_AMFFactory.GetTrace()->SetWriterLevel(AMF_TRACE_WRITER_DEBUG_OUTPUT, AMF_TRACE_INFO);
-        g_AMFFactory.GetTrace()->SetWriterLevel(AMF_TRACE_WRITER_CONSOLE, AMF_TRACE_INFO);
-
-        return AMF_OK;
-    }
-};
-//-------------------------------------------------------------------------------------------------
-
 
 
 
@@ -200,10 +173,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
     DisplayDvrPipeline pipeline;
     s_pPipeline = &pipeline;
 
-    std::wstring codec = L"AMFVideoEncoderVCE_AVC";
     s_pPipeline->SetParam(DisplayDvrPipeline::PARAM_NAME_CODEC, AMFVideoEncoderVCE_AVC);
     RegisterEncoderParamsAVC(s_pPipeline);
 
+    s_pPipeline->SetParamDescription(DisplayDvrPipeline::PARAM_NAME_ENABLE_PRE_ANALYSIS, ParamEncoderStatic, L"Enable PA (true, false default =  false)", ParamConverterBoolean);
 
     s_pPipeline->SetParam(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
     s_pPipeline->SetParam(DisplayDvrPipeline::PARAM_NAME_ADAPTERID, kDefaultGPUIdx);
@@ -466,12 +439,17 @@ void  PopulateComponentsMenu(HMENU hMenu)
 {
     HMENU  hCaptureComponents = GetSubMenu(hMenu, 3);
 
-    if (AppendMenu(hCaptureComponents, MF_BYPOSITION, ID_CAPTURE_COMPONENT_START, L"AMD DirectCapture") == false)
+    if (AppendMenu(hCaptureComponents, MF_BYPOSITION, ID_CAPTURE_COMPONENT_START, L"AMD DX11 DirectCapture") == false)
     {
-        LOG_ERROR(L"Could not insert AMD capture component menu item.");
+        LOG_ERROR(L"Could not insert AMD DX11 capture component menu item.");
         return;
     }
-    if (AppendMenu(hCaptureComponents, MF_BYPOSITION, ID_CAPTURE_COMPONENT_START + 1, L"Desktop Duplication") == false)
+    if (AppendMenu(hCaptureComponents, MF_BYPOSITION, ID_CAPTURE_COMPONENT_START + 1, L"AMD DX12 DirectCapture") == false)
+    {
+        LOG_ERROR(L"Could not insert AMD DX12 capture component menu item.");
+        return;
+    }
+    if (AppendMenu(hCaptureComponents, MF_BYPOSITION, ID_CAPTURE_COMPONENT_START + 2, L"Desktop Duplication") == false)
     {
         LOG_ERROR(L"Could not insert DD capture component menu item.");
     }
@@ -529,15 +507,20 @@ void UpdateMenuItems()
     }
 
     HMENU  hCaptureComponents = GetSubMenu(hMenu, 3);
-    if (iSelectedComponent == L"AMD")
+    CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START, MF_BYCOMMAND | MF_UNCHECKED);
+    CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START + 1, MF_BYCOMMAND | MF_UNCHECKED);
+    CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START + 2, MF_BYCOMMAND | MF_UNCHECKED);
+    if (iSelectedComponent == L"DD")
     {
-        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START, MF_BYCOMMAND | MF_CHECKED);
-        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START + 1, MF_BYCOMMAND | MF_UNCHECKED);
+        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START + 2, MF_BYCOMMAND | MF_CHECKED);
+    }
+    else if (s_pPipeline->GetEngineMemoryTypes() == amf::AMF_MEMORY_DX12)
+    {
+        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START + 1, MF_BYCOMMAND | MF_CHECKED);
     }
     else
     {
-        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START + 1, MF_BYCOMMAND | MF_CHECKED);
-        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START, MF_BYCOMMAND | MF_UNCHECKED);
+        CheckMenuItem(hCaptureComponents, ID_CAPTURE_COMPONENT_START, MF_BYCOMMAND | MF_CHECKED);
     }
 
 }
@@ -646,11 +629,29 @@ INT_PTR CALLBACK DialogProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM /*lPa
             if (id == 0)
             {
                 s_pPipeline->SetParam(DisplayDvrPipeline::PARAM_NAME_CAPTURE_COMPONENT, L"AMD");
+                s_pPipeline->SetEngineMemoryTypes(amf::AMF_MEMORY_DX11);
+            }
+            else if(id == 1)
+            {
+                s_pPipeline->SetParam(DisplayDvrPipeline::PARAM_NAME_CAPTURE_COMPONENT, L"AMD");
+                s_pPipeline->SetEngineMemoryTypes(amf::AMF_MEMORY_DX12);
             }
             else
             {
                 s_pPipeline->SetParam(DisplayDvrPipeline::PARAM_NAME_CAPTURE_COMPONENT, L"DD");
             }
+            UpdateMenuItems();
+        }
+        else if (wmId == ID_PRE_ANALYSIS)
+        {
+            bool enablePA = false;
+            s_pPipeline->GetParam(DisplayDvrPipeline::PARAM_NAME_ENABLE_PRE_ANALYSIS, enablePA);
+            enablePA = !enablePA;
+            s_pPipeline->SetParam(DisplayDvrPipeline::PARAM_NAME_ENABLE_PRE_ANALYSIS, enablePA);
+
+            HMENU  hMenu = GetMenu(g_hDlg);
+            CheckMenuItem(hMenu, ID_PRE_ANALYSIS, MF_BYCOMMAND | (enablePA ? MF_CHECKED : MF_UNCHECKED));
+
             UpdateMenuItems();
         }
         break;

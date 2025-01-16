@@ -65,11 +65,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
       - [3.2.1 Transcoding application (TranscodeHW.exe)](#321-transcoding-application-transcodehwexe)
       - [3.2.2	D3D application (VCEEncoderD3D.exe)](#322d3d-application-vceencoderd3dexe)
   - [4 Annex A: Encoding \& frame parameters description](#4-annex-a-encoding--frame-parameters-description)
-    - [Table A-1. Encoder configuration parameters](#table-a-1-encoder-configuration-parameters)
+    - [Table A-1. Encoder parameters](#table-a-1-encoder-parameters)
     - [Table A-2. Input frame and encoded data parameters](#table-a-2-input-frame-and-encoded-data-parameters)
     - [Table A-3. Encoder capabilities exposed in AMFCaps interface](#table-a-3-encoder-capabilities-exposed-in-amfcaps-interface)
     - [Table A-4. Encoder statistics feedback](#table-a-4-encoder-statistics-feedback)
     - [Table A-5. Encoder PSNR/SSIM feedback](#table-a-5-encoder-psnrssim-feedback)
+    - [Table A-6. Deprecated](#table-a-6-deprecated)
 
 
 ## 1 Introduction
@@ -172,7 +173,7 @@ Remark: quality layers are not supported on VCE 1.0. “QL0” must be used for 
 
 Region of importance (ROI) feature provides a way to specify the relative importance of the macroblocks in the video frame. Encoder will further adjust the bits allocation among code blocks based on the importance, on top of the base rate control decisions. More important blocks will be encoded with relatively better quality.
 
-The ROI map can be attached to the input frame on a per frame basis. Currently, the ROI map can only use system memory. The ROI map includes the importance values of each macro block, ranging from 0 to 10, stored in 32bit unsinged format. Refer to SimpleROI sample application for further implementation details.
+The ROI map can be attached to the input frame on a per frame basis. Currently, the ROI map can only use system memory. The ROI map includes the importance values of each 16x16 macro block, ranging from `0` (least important) to `10` (most important), stored in 32bit unsigned format. Refer to SimpleROI sample application for further implementation details.
 
 ### 2.2.6 Encoder Statistics Feedback
 
@@ -604,7 +605,7 @@ This command encodes `400` frames through D3D renderer and creates an output fil
 
 ## 4 Annex A: Encoding & frame parameters description
 
-### Table A-1. Encoder configuration parameters
+### Table A-1. Encoder parameters
 
 | Name (prefix "AMF_VIDEO_ENCODER_") | Type      |
 | :--------------------------------- | :-------- |
@@ -617,6 +618,7 @@ This command encodes `400` frames through D3D renderer and creates an output fil
 | LOWLATENCY_MODE                    | amf_bool  |
 | FRAMESIZE                          | AMFSize   |
 | ASPECT_RATIO                       | AMFRatio  |
+| MAX_REFRAMES                       | amf_int64 |
 | MAX_CONSECUTIVE_BPICTURES          | amf_int64 |
 | ADAPTIVE_MINIGOP                   | amf_bool  |
 | PRE_ANALYSIS_ENABLE                | amf_bool  |
@@ -626,7 +628,7 @@ This command encodes `400` frames through D3D renderer and creates an output fil
 
 
 <p align="center">
-Table 4. Encoder initialization parameters
+Table 4. Encoder static parameters
 </p>
 
 ---
@@ -771,6 +773,20 @@ Frame width and height in pixels, maximum values are hardware-specific, should b
 
 **Description:**
 Pixel aspect ratio.
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES`
+
+**Values:**
+`0`...`16`
+
+**Default Value:**
+`4`
+
+**Description:**
+Maximum number of reference frames.
 
 ---
 
@@ -1346,13 +1362,13 @@ Enables/disables filler data to maintain constant bit rate.
 | :--------------------------------- | :-------- |
 | HEADER_INSERTION_SPACING           | amf_int64 |
 | IDR_PERIOD                         | amf_int64 |
+| INTRA_PERIOD                       | amf_int64 |
 | DE_BLOCKING_FILTER                 | amf_bool  |
 | INTRA_REFRESH_NUM_MBS_PER_SLOT     | amf_int64 |
 | SLICES_PER_FRAME                   | amf_int64 |
 | B_PIC_PATTERN                      | amf_int64 |
 | B_REFERENCE_ENABLE                 | amf_int64 |
 | CABAC_ENABLE                       | amf_int64 |
-| MAX_NUM_REFRAMES                   | amf_int64 |
 | HIGH_MOTION_QUALITY_BOOST_ENABLE   | amf_bool  |
 
 
@@ -1395,6 +1411,22 @@ Sets IDR period. IDRPeriod = `0` turns IDR off.
 To get SPS/PPS for every IDR, header insertion spacing has to be the same as IDR period.
 
 ---
+
+
+**Name:**
+`AMF_VIDEO_ENCODER_INTRA_PERIOD`
+
+**Values:**
+`0` – `1000`
+
+**Default Value:**
+`0`
+
+**Description:**
+Number of frames between two intra frames.
+
+---
+
 
 **Name:**
 `AMF_VIDEO_ENCODER_DE_BLOCKING_FILTER`
@@ -1471,7 +1503,7 @@ Sets the number of consecutive B-pictures in a GOP.  BPicturesPattern = `0` indi
 
 **Default Value associated with usages:**
    - Transcoding: `true`
-   - Ultra low latency: `false`
+   - Ultra low latency: `true`
    - Low latency: `true`
    - Webcam: `true`
    - HQ: `true`
@@ -1500,20 +1532,6 @@ Encoder coding method, when Undefined is selected, the behavior is profile-speci
 ---
 
 **Name:**
-`AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES`
-
-**Values:**
-`0`...`16`
-
-**Default Value:**
-`4`
-
-**Description:**
-Maximum number of reference frames.
-
----
-
-**Name:**
 `AMF_VIDEO_ENCODER_HIGH_MOTION_QUALITY_BOOST_ENABLE`
 
 **Values:**
@@ -1532,25 +1550,37 @@ Enable High motion quality boost mode. It pre-analysis the motion of the video a
 
 ---
 
-| Name (prefix "AMF_VIDEO_ENCODER_") | Type      |
-| :--------------------------------- | :-------- |
-| SCANTYPE                           | amf_int64 |
-| QUALITY_PRESET                     | amf_int64 |
-| FULL_RANGE_COLOR                   | amf_bool  |
-| MAX_INSTANCES                      | amf_int64 |
-| MULTI_INSTANCE_MODE                | amf_bool  |
-| CURRENT_QUEUE                      | amf_int64 |
-| PICTURE_TRANSFER_MODE              | amf_int64 |
-| QUERY_TIMEOUT                      | amf_int64 |
-| INPUT_QUEUE_SIZE                   | amf_int64 |
-| OUTPUT_MODE                        | amf_int64 |
-| PSNR_FEEDBACK                      | amf_bool  |
-| SSIM_FEEDBACK                      | amf_bool  |
-| BLOCK_QP_FEEDBACK                  | amf_bool  |
+| Name (prefix "AMF_VIDEO_ENCODER_") | Type         |
+| :--------------------------------- | :----------  |
+| EXTRADATA                          | AMFBufferPtr |
+| SCANTYPE                           | amf_int64    |
+| QUALITY_PRESET                     | amf_int64    |
+| FULL_RANGE_COLOR                   | amf_bool     |
+| PICTURE_TRANSFER_MODE              | amf_int64    |
+| QUERY_TIMEOUT                      | amf_int64    |
+| INPUT_QUEUE_SIZE                   | amf_int64    |
+| OUTPUT_MODE                        | amf_int64    |
+| PSNR_FEEDBACK                      | amf_bool     |
+| SSIM_FEEDBACK                      | amf_bool     |
+| BLOCK_QP_FEEDBACK                  | amf_bool     |
 
 <p align="center">
 Table 8. Encoder miscellaneous parameters
 </p>
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_EXTRADATA`
+
+**Values:**
+`AMFBufferPtr`
+
+**Default Value:**
+`NULL`
+
+**Description:**
+SPS/PPS buffer in Annex B format - read-only.
 
 ---
 
@@ -1602,48 +1632,6 @@ True indicates that the YUV range is `0`...`255`.
 ---
 
 **Name:**
-`AMF_VIDEO_ENCODER_MAX_INSTANCES`
-
-**Values:**
-`1`, `2`
-
-**Default Value:**
-`1`
-
-**Description:**
-Hardware-dependent, only some hardware supports 2 instances.
-
----
-
-**Name:**
-`AMF_VIDEO_ENCODER_MULTI_INSTANCE_MODE`
-
-**Values:**
-`true`, `false`
-
-**Default Value:**
-`false`
-
-**Description:**
-Enables or disables multi-instance mode.
-
----
-
-**Name:**
-`AMF_VIDEO_ENCODER_CURRENT_QUEUE`
-
-**Values:**
-`0`, `1`
-
-**Default Value:**
-`0`
-
-**Description:**
-Selects the encoder instance frames are being submitted to.
-
----
-
-**Name:**
 `AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE`
 
 **Values:**
@@ -1672,7 +1660,8 @@ The application can turn on this flag for a specific input picture to allow dump
    - HQLL: `50`
 
 **Description:**
-Timeout for QueryOutput call in ms.
+Timeout for a `QueryOutput` call in ms.
+Setting this to a nonzero value will reduce polling load when `QueryOutput` is called; it will be blocked until the frame is ready or until the timeout is reached.
 
 ---
 
@@ -2027,13 +2016,13 @@ Remarks:
 `AMF_VIDEO_ENCODER_ROI_DATA`
 
 **Values:**
-Video surface
+Video surface in `AMF_SURFACE_GRAY32` format
 
 **Default Value:**
 `N\A`
 
 **Description:**
-Important value for each macro block ranges from `0` to `10`, stored in 32bit unsigned format.
+Importance value for each 16x16 macro block ranges from `0` (least important) to `10` (most important), stored in 32bit unsigned format.
 
 ---
 
@@ -2173,18 +2162,18 @@ Reconstructed picture. Valid with `AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE` turn
 |NUM_OF_STREAMS                   |amf_int64|
 |MAX_PROFILE                      |amf_int64|
 |MAX_LEVEL                        |amf_int64|
-|BFRAMES                     |amf_bool|
+|BFRAMES                          |amf_bool|
 |MIN_REFERENCE_FRAMES             |amf_int64|
 |MAX_REFERENCE_FRAMES             |amf_int64|
 |MAX_TEMPORAL_LAYERS              |amf_int64|
-|FIXED_SLICE_MODE                     |amf_bool|
+|FIXED_SLICE_MODE                 |amf_bool|
 |NUM_OF_HW_INSTANCES              |amf_int64|
 |COLOR_CONVERSION                 |amf_int64|
 |PRE_ANALYSIS                     |amf_bool|
 |ROI                              |amf_bool|
 |MAX_THROUGHPUT                   |amf_int64|
 |REQUESTED_THROUGHPUT             |amf_int64|
-|QUERY_TIMEOUT_SUPPORT           |amf_bool|
+|QUERY_TIMEOUT_SUPPORT            |amf_bool|
 |SUPPORT_SLICE_OUTPUT             |amf_bool|
 
 
@@ -2338,7 +2327,7 @@ Pre analysis module is available.
 
 
 **Description:**
-ROI map support is available for H264 UVE encoder, n/a for the other encoders.
+ROI map support is available.
 
 ---
 
@@ -2672,3 +2661,89 @@ SSIM YUV.
 
 ---
 
+### Table A-6. Deprecated
+
+| Name (prefix "AMF_VIDEO_ENCODER_") | Type       | Deprecated Starting |
+| :--------------------------------- | :--------- | :--------: |
+| MAX_INSTANCES                      | amf_int64    | v1.4.21 |
+| MULTI_INSTANCE_MODE                | amf_bool     | v1.4.21 |
+| CURRENT_QUEUE                      | amf_int64    | v1.4.23 |
+| RATE_CONTROL_PREANALYSIS_ENABLE    | amf_int64    | v1.4.21 |
+| CAPS_QUERY_TIMEOUT_SUPPORT         | amf_bool     | v1.4.18 |
+
+
+<p align="center">
+Table 17. Deprecated
+</p>
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_MAX_INSTANCES`
+
+**Values:**
+`1`, `2`
+
+**Default Value:**
+`1`
+
+**Description:**
+Hardware-dependent, only some hardware supports 2 instances.
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_MULTI_INSTANCE_MODE`
+
+**Values:**
+`true`, `false`
+
+**Default Value:**
+`false`
+
+**Description:**
+Enables or disables multi-instance mode.
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_CURRENT_QUEUE`
+
+**Values:**
+`0`, `1`
+
+**Default Value:**
+`0`
+
+**Description:**
+Selects the encoder instance frames are being submitted to.
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_RATE_CONTROL_PREANALYSIS_ENABLE`
+
+**Values:**
+`AMF_VIDEO_ENCODER_PREENCODE_DISABLED`, `AMF_VIDEO_ENCODER_PREENCODE_ENABLED`
+
+**Default Value:**
+`0`
+
+**Description:**
+Enables pre-encode assisted rate control. Deprecated, please use `AMF_VIDEO_ENCODER_PREENCODE_ENABLE` instead.
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT`
+
+**Values:**
+`true`, `false`
+
+**Default Value:**
+`N/A`
+
+**Description:**
+Timeout supported for `QueryOutput` call. Deprecated, please use `AMF_VIDEO_ENCODER_CAP_QUERY_TIMEOUT_SUPPORT` instead.
+
+---

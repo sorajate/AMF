@@ -139,7 +139,7 @@ Per submission properties are applied on a per frame basis. They can be set opti
 
 Region of importance (ROI) feature provides a way to specify the relative importance of the macroblocks in the video frame. Encoder will further adjust the bits allocation among code blocks based on the importance, on top of the base rate control decisions. More important blocks will be encoded with relatively better quality.
 
-The ROI map can be attached to the input frame on a per frame basis. Currently, the ROI map can only use system memory. The ROI map includes the importance values of each 64x64 SB, ranging from `0` to `10`, stored in 32bit unsinged format. Refer to SimpleROI sample application for further implementation details.
+The ROI map can be attached to the input frame on a per frame basis. Currently, the ROI map can only use system memory. The ROI map includes the importance values of each 64x64 SB, ranging from `0` (least important) to `10` (most important), stored in 32bit unsigned format. Refer to SimpleROI sample application for further implementation details.
 
 #### 2.2.5 Encoder Statistics Feedback
 
@@ -597,9 +597,12 @@ This command encodes `400` frames through D3D renderer and creates an output fil
 | TILES_PER_FRAME                        | amf_int64 |
 | LTR_MODE                               | amf_int64 |
 | MAX_NUM_REFRAMES                       | amf_int64 |
+| MAX_CONSECUTIVE_BPICTURES              | amf_int64 |
+| ADAPTIVE_MINIGOP                       | amf_bool  |
 | ENCODING_LATENCY_MODE                  | amf_int64 |
+| FRAMESIZE                              | AMFSize   |
 | ALIGNMENT_MODE                         | amf_int64 |
-| PRE_ANALYSIS                           | amf_bool  |
+| PRE_ANALYSIS_ENABLE                    | amf_bool  |
 | MAX_NUM_TEMPORAL_LAYERS                | amf_int64 |
 | ENABLE_SMART_ACCESS_VIDEO              | amf_bool  |
 
@@ -727,6 +730,34 @@ Maximum number of reference frames.
 ---
 
 **Name:**
+`AMF_VIDEO_ENCODER_AV1_MAX_CONSECUTIVE_BPICTURES`
+
+**Values:**
+`0`...`0` or `127`
+
+**Default Value:**
+`0` or `127`
+
+**Description:**
+Maximum number of consecutive B Pictures. The default value is determined by `AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES`. If `AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES` is true, the default value is 127; otherwise, it is 0.
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_AV1_ADAPTIVE_MINIGOP`
+
+**Values:**
+`true`, `false`
+
+**Default Value:**
+`false`
+
+**Description:**
+Disable/Enable Adaptive MiniGOP, can enable with PA enabled.
+
+---
+
+**Name:**
 `AMF_VIDEO_ENCODER_AV1_ENCODING_LATENCY_MODE`
 
 **Values:**
@@ -746,6 +777,21 @@ Choose different mode to balance encoder latency with power consumption.
 ---
 
 **Name:**
+`AMF_VIDEO_ENCODER_AV1_FRAMESIZE`
+
+**Values:**
+Width: `256` – `8192`
+Height: `128` – `4352`
+
+**Default Value:**
+`0,0`
+
+**Description:**
+Frame width/Height in pixels, maximum value is hardware-specific, should be queried through `AMFCaps`.
+
+---
+
+**Name:**
 `AMF_VIDEO_ENCODER_AV1_ALIGNMENT_MODE`
 
 **Values:**
@@ -760,7 +806,7 @@ AV1 alignment Mode.
 ---
 
 **Name:**
-`AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS`
+`AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE`
 
 **Values:**
 `true`, `false`
@@ -806,31 +852,6 @@ When set to `true`, enables the SmartAccess Video feature, which optimally alloc
 
 ---
 
-| Name (Prefix “AMF_VIDEO_ENCODER_AV1_”) | Type    |
-| :------------------------------------- | :------ |
-| FRAMESIZE                              | AMFSize |
-
-<p align="center">
-Table 5. Encoder resolution parameters
-</p>
-
----
-
-**Name:**
-`AMF_VIDEO_ENCODER_AV1_FRAMESIZE`
-
-**Values:**
-Width: `256` – `8192`
-Height: `128` – `4352`
-
-**Default Value:**
-`0,0`
-
-**Description:**
-Frame width/Height in pixels, maximum value is hardware-specific, should be queried through `AMFCaps`.
-
----
-
 | Name (Prefix “AMF_VIDEO_ENCODER_AV1_”) | Type      |
 | :------------------------------------- | :-------- |
 | TARGET_BITRATE                         | amf_int64 |
@@ -854,7 +875,7 @@ Frame width/Height in pixels, maximum value is hardware-specific, should be quer
 | HIGH_MOTION_QUALITY_BOOST              | amf_bool  |
 
 <p align="center">
-Table 6. Encoder rate-control parameters
+Table 5. Encoder rate-control parameters
 </p>
 
 ---
@@ -1196,9 +1217,10 @@ Enable high motion quality boost mode to pre-analyze the motion of the video and
 | CDEF_MODE                              | amd_int64 |
 | INTRA_REFRESH_MODE                     | amf_int64 |
 | INTRAREFRESH_STRIPES                   | amf_int64 |
+| B_PIC_PATTERN                          | amf_int64 |
 
 <p align="center">
-Table 7. Encoder picture-control parameters
+Table 6. Encoder picture-control parameters
 </p>
 
 ---
@@ -1320,6 +1342,20 @@ Valid only when intra refresh is enabled.
 
 ---
 
+**Name:**
+`AMF_VIDEO_ENCODER_AV1_B_PIC_PATTERN`
+
+**Values:**
+`0`...`127`
+
+**Default Value:**
+`0`
+
+**Description:**
+Sets the number of consecutive B-pictures in a GOP.  BPicturesPattern = `0` indicates that B-pictures are not used.
+
+---
+
 | Name (Prefix “AMF_VIDEO_ENCODER_AV1_”) |Type       |
 | :------------------------------------- | :-------- |
 | QUALITY_PRESET                         | amf_int64 |
@@ -1329,7 +1365,7 @@ Valid only when intra refresh is enabled.
 | OUTPUT_MODE                            | amf_int64 |
 
 <p align="center">
-Table 8. Encoder miscellaneous parameters
+Table 7. Encoder miscellaneous parameters
 </p>
 
 ---
@@ -1369,6 +1405,7 @@ Selects the quality preset in HW to balance between encoding speed and video qua
 
 **Description:**
 Timeout for QueryOutput call in ms.
+Setting this to a nonzero value will reduce polling load when `QueryOutput` is called; it will be blocked until the frame is ready or until the timeout is reached.
 
 ---
 
@@ -1428,7 +1465,7 @@ Defines encoder output mode.
 | CDF_FRAME_END_UPDATE_MODE              | amd_int64 |
 
 <p align="center">
-Table 9. Encoder configuration
+Table 8. Encoder configuration
 </p>
 
 ---
@@ -1440,10 +1477,10 @@ Table 9. Encoder configuration
 `true`, `false`
 
 **Default Value:**
-`false`
+`true`
 
 **Description:**
-If true, allow enabling screen content tools by `AMF_VIDEO_ENCODER_AV1_PALETTE_MODE_ENABLE` and `AMF_VIDEO_ENCODER_AV1_FORCE_INTEGER_MV`; if false, all screen content tools are disabled.
+If `true`, allow enabling screen content tools by `AMF_VIDEO_ENCODER_AV1_PALETTE_MODE_ENABLE` and `AMF_VIDEO_ENCODER_AV1_FORCE_INTEGER_MV`; if `false`, all screen content tools are disabled.
 
 ---
 
@@ -1454,10 +1491,10 @@ If true, allow enabling screen content tools by `AMF_VIDEO_ENCODER_AV1_PALETTE_M
 `true`, `false`
 
 **Default Value:**
-depends on `USAGE`
+`true`
 
 **Description:**
-If true, enable palette mode; if false, disable palette mode. Valid only when `AMF_VIDEO_ENCODER_AV1_SCREEN_CONTENT_TOOLS` is true.
+If `true`, enable palette mode; if `false`, disable palette mode. Valid only when `AMF_VIDEO_ENCODER_AV1_SCREEN_CONTENT_TOOLS` is `true`.
 
 ---
 
@@ -1468,7 +1505,7 @@ If true, enable palette mode; if false, disable palette mode. Valid only when `A
 `true`, `false`
 
 **Default Value:**
-depends on `USAGE`
+`false`
 
 **Description:**
 If `true`, enable force integer MV; if `false`, disable force integer MV. Valid only when `AMF_VIDEO_ENCODER_AV1_SCREEN_CONTENT_TOOLS` is `true`.
@@ -1552,10 +1589,10 @@ Sets the number of bits in each pixel’s color component in the encoder’s com
 `true`, `false`
 
 **Default Value:**
-`false`
+`true`
 
 **Description:**
-If `false`, disable CDF update.
+If `false`, disable CDF update. If `true`, enable CDF update.
 
 ---
 
@@ -1584,7 +1621,7 @@ CDF frame end update mode.
 | INPUT_HDR_METADATA                     | AMFBufferPtr |
 
 <p align="center">
-Table 10. Encoder color conversion parameters
+Table 9. Encoder color conversion parameters
 </p>
 
 ---
@@ -1703,7 +1740,7 @@ Buffer to retrieve coded sequence header.
 | NUM_TEMPORAL_LAYERS                    | amf_int64 |
 
 <p align="center">
-Table 11. Encoder SVC parameters
+Table 10. Encoder SVC parameters
 </p>
 
 **Name:**
@@ -1729,7 +1766,7 @@ Remarks:
 | TL<TL_Num>.QL0.<Parameter_name>        |      |
 
 <p align="center">
-Table 12. Encoder SVC per-layer parameters
+Table 11. Encoder SVC per-layer parameters
 </p>
 
 ---
@@ -1782,7 +1819,7 @@ Rate-control parameters supported:
 | BLOCK_Q_INDEX_FEEDBACK                 | amf_bool           |
 
 <p align="center">
-Table 13. Frame per-submission parameters
+Table 12. Frame per-submission parameters
 </p>
 
 ---
@@ -1861,7 +1898,7 @@ Video surface in `AMF_SURFACE_GRAY32` format
 `N/A`
 
 **Description:**
-Important value for each 64x64 block ranges from `0` to `10`, stored in 32bit unsigned format.
+Importance value for each 64x64 block ranges from `0` (least important) to `10` (most important), stored in 32bit unsigned format.
 
 ---
 
@@ -1930,7 +1967,7 @@ Signal encoder to collect and feedback block level QIndex values.
 | RECONSTRUCTED_PICTURE                  | AMFSurface |
 
 <p align="center">
-Table 14. Encoded data parameters
+Table 13. Encoded data parameters
 </p>
 
 ---
@@ -2019,10 +2056,13 @@ Returns reconstructed picture as an `AMFSurface` attached to the output buffer a
 | MAX_LEVEL                                     | amf_int64 |
 | MAX_NUM_TEMPORAL_LAYERS                       | amf_int64 |
 | MAX_NUM_LTR_FRAMES                            | amf_int64 |
-| SUPPORT_TILE_OUTPUT                            | amf_bool |
+| SUPPORT_TILE_OUTPUT                           | amf_bool  |
+| WIDTH_ALIGNMENT_FACTOR                        | amf_int64 |
+| HEIGHT_ALIGNMENT_FACTOR                       | amf_int64 |
+| BFRAMES                                       | amf_bool  |
 
 <p align="center">
-Table 15. Encoder capabilities exposed in AMFCaps interface
+Table 14. Encoder capabilities exposed in AMFCaps interface
 </p>
 
 ---
@@ -2156,6 +2196,42 @@ If tile output is supported.
 
 ---
 
+**Name:**
+`AMF_VIDEO_ENCODER_AV1_CAP_WIDTH_ALIGNMENT_FACTOR`
+
+**Values:**
+Integers, >=0
+
+
+**Description:**
+This is used for querying the av1 picture width alignment factor
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_AV1_CAP_HEIGHT_ALIGNMENT_FACTOR`
+
+**Values:**
+Integers, >=0
+
+
+**Description:**
+This is used for querying the av1 picture height alignment factor
+
+---
+
+**Name:**
+`AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES`
+
+**Values:**
+`true`, `false`
+
+
+**Description:**
+This is used for querying av1 b frame support
+
+---
+
 ### Table A-4. Encoder statistics feedback
 
 | Statistic Name (prefix "AMF_VIDEO_ENCODER_AV1") | Type      |
@@ -2184,7 +2260,7 @@ If tile output is supported.
 | STATISTIC_VARIANCE                              | amf_int64 |
 
 <p align="center">
-Table 16. Encoder statistics feedback
+Table 15. Encoder statistics feedback
 </p>
 
 ---
@@ -2370,7 +2446,7 @@ Frame level variance for full encoding.
 | BLOCK_Q_INDEX_MAP | AMFSurface |
 
 <p align="center">
-Table 17. Encoder block level feedback
+Table 16. Encoder block level feedback
 </p>
 
 ---
@@ -2397,7 +2473,7 @@ Table 17. Encoder block level feedback
 | STATISTIC_SSIM_ALL                              | amf_double |
 
 <p align="center">
-Table 18. Encoder statistics feedback
+Table 17. Encoder statistics feedback
 </p>
 
 ---

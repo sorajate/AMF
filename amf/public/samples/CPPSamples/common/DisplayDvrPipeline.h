@@ -40,11 +40,16 @@
 #include "public/include/components/VideoEncoderAV1.h"
 #include "public/common/CurrentTimeImpl.h"
 
+#if defined(_WIN32)
 #if !defined(METRO_APP)
 #include "DeviceDX9.h"
 #endif//#if defined(METRO_APP)
 #include "DeviceDX11.h"
+#include "DeviceDX12.h"
 #include "DeviceOpenCL.h"
+#else
+#include "DeviceVulkan.h"
+#endif
 
 #include "BitStreamParser.h"
 #include "Pipeline.h"
@@ -100,6 +105,9 @@ public:
     // Capture Component
     static const wchar_t* PARAM_NAME_CAPTURE_COMPONENT;
 
+    // Pre Analysis
+    static const wchar_t* PARAM_NAME_ENABLE_PRE_ANALYSIS;
+
 #if !defined(METRO_APP)
     AMF_RESULT Init();
 #else
@@ -121,6 +129,10 @@ public:
     AMF_RESULT SwitchConverterFormat(amf_int32 index, amf::AMF_SURFACE_FORMAT format);
     AMF_RESULT GetMonitorIDs(std::vector<amf_uint32> &monitorIDs);
     AMF_RESULT SetMonitorIDs(const std::vector<amf_uint32>& monitorIDs);
+
+    AMF_RESULT SetEngineMemoryTypes(amf::AMF_MEMORY_TYPE engineMemoryType);
+    amf::AMF_MEMORY_TYPE  GetEngineMemoryTypes();
+
 protected:
     virtual void OnParamChanged(const wchar_t* name);
 
@@ -146,11 +158,18 @@ private:
 
     AMF_RESULT            UpdateMuxerFileName();
 
+    amf::AMF_MEMORY_TYPE            m_engineMemoryType;
+
+#if defined(_WIN32)
 #if !defined(METRO_APP)
     DeviceDX9                       m_deviceDX9;
 #endif//#if !defined(METRO_APP)
     DeviceDX11                      m_deviceDX11;
+    DeviceDX12                      m_deviceDX12;
     DeviceOpenCL                    m_deviceOpenCL;
+#else
+    DeviceVulkan                m_deviceVulkan;
+#endif
 
     amf::AMFContextPtr              m_pContext;
 

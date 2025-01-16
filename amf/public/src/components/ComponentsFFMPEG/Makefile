@@ -37,7 +37,6 @@ uname_p := $(shell uname -p)
   platform_name=lnx
 endif
 
-ffmpeg_dir = $(amf_root)/../Thirdparty/ffmpeg/ffmpeg-6.0/$(platform_name)$(host_bits)/release
 
 pp_defines += \
   AMF_COMPONENT_FFMPEG_EXPORTS
@@ -51,13 +50,13 @@ pp_include_dirs = $(amf_root) \
   $(ffmpeg_dir)/include
 
 ffmpeg_libs = \
-  libavcodec.so.60 \
-  libavdevice.so.60 \
-  libavfilter.so.9 \
-  libavformat.so.60 \
-  libavutil.so.58 \
-  libswresample.so.4 \
-  libswscale.so.7
+  libavcodec.so.61 \
+  libavdevice.so.61 \
+  libavfilter.so.10 \
+  libavformat.so.61 \
+  libavutil.so.59 \
+  libswresample.so.5 \
+  libswscale.so.8
 
 linker_libs += $(patsubst %,:"%",$(ffmpeg_libs))
 

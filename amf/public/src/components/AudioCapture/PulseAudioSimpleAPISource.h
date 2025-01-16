@@ -36,6 +36,7 @@
 #include <pulse/pulseaudio.h>
 #include "../../../common/AMFSTL.h"
 #include "../../../common/InterfaceImpl.h"
+#include "../../../common/Linux/PulseAudioImportTable.h"
 #include "../../../include/core/Context.h"
 #include "../../../include/components/AudioCapture.h"
 
@@ -76,13 +77,15 @@ namespace amf
         virtual AMF_RESULT Init(bool captureMic);
         virtual AMF_RESULT Terminate();
 
+        PulseAudioImportTable m_pa;
+
         // PulseAudio simple API does not support async calls. Read will block until specified
         // amount of data has been read into the buffer.
         // With those constraints, currently we always capture 490 samples (corresponds to 1/90 ms)
         // so capturedSampleCount will always be 490.
         // CaptureAudio allocates pAudioBuffer and directly capture data into it.
-        virtual AMF_RESULT CaptureAudio(AMFAudioBufferPtr& pAudoBuffer, AMFContextPtr& pContext, amf_uint32& capturedSampleCount, amf_pts& latencyPts);
-        AMF_RESULT CaptureAudioRaw(short* dest, amf_uint32 sampleCount, amf_uint32& capturedSampleCount, amf_pts& latencyPts);
+        virtual AMF_RESULT CaptureAudio(AMFAudioBufferPtr& pAudoBuffer, AMFContextPtr& pContext, amf_uint32& capturedSampleCount);
+        AMF_RESULT CaptureAudioRaw(short* dest, amf_uint32 sampleCount, amf_uint32& capturedSampleCount);
 
         void AddToSourceList(amf_string& srcName);
         void AddToSinkMonitorList(amf_string& srcName);
